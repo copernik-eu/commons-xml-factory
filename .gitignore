@@ -1,0 +1,12 @@
+# Build output
+target
+# Eclipse files
+.project
+.classpath
+.settings/
+# IntelliJ IDEA files
+.idea/
+*.iml
+# NetBeans files files
+nb-configuration.xml
+nbactions.xml
