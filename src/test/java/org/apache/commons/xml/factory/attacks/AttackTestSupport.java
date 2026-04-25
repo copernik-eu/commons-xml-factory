@@ -74,11 +74,6 @@ final class AttackTestSupport {
      */
     private static final String JDK_ENTITY_EXPANSION_LIMIT = "http://www.oracle.com/xml/jaxp/properties/entityExpansionLimit";
 
-    /**
-     * URL form of the JDK's max-general-entity-size limit property.
-     */
-    private static final String JDK_MAX_GENERAL_ENTITY_SIZE_LIMIT = "http://www.oracle.com/xml/jaxp/properties/maxGeneralEntitySizeLimit";
-
     static void assertDomBlocks(final String payload) {
         assertParseFails(() -> XmlFactories.newDocumentBuilderFactory().newDocumentBuilder().parse(inputSource(payload)), "DOM");
     }
@@ -87,6 +82,7 @@ final class AttackTestSupport {
         assertParseSucceeds(() -> {
             final DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
             factory.setFeature(XMLConstants.FEATURE_SECURE_PROCESSING, false);
+            suppressException(() -> factory.setAttribute(JDK_ENTITY_EXPANSION_LIMIT, "0"));
             factory.newDocumentBuilder().parse(inputSource(payload));
         }, "DOM");
     }
@@ -127,6 +123,7 @@ final class AttackTestSupport {
             final SAXParserFactory factory = SAXParserFactory.newInstance();
             factory.setFeature(XMLConstants.FEATURE_SECURE_PROCESSING, false);
             final XMLReader reader = factory.newSAXParser().getXMLReader();
+            suppressException(() -> reader.setProperty(JDK_ENTITY_EXPANSION_LIMIT, "0"));
             reader.setContentHandler(new DefaultHandler());
             reader.setErrorHandler(new DefaultHandler());
             reader.parse(inputSource(payload));
@@ -148,6 +145,7 @@ final class AttackTestSupport {
         assertParseSucceeds(() -> {
             final SchemaFactory factory = SchemaFactory.newInstance(XMLConstants.W3C_XML_SCHEMA_NS_URI);
             factory.setFeature(XMLConstants.FEATURE_SECURE_PROCESSING, false);
+            suppressException(() -> factory.setProperty(JDK_ENTITY_EXPANSION_LIMIT, "0"));
             factory.newSchema(streamSource(xsd));
         }, "Schema compile");
     }
@@ -183,10 +181,9 @@ final class AttackTestSupport {
     static void assertStaxResolves(final String payload) {
         assertParseSucceeds(() -> {
             final XMLInputFactory factory = XMLInputFactory.newInstance();
-            tolerantSetProperty(factory, XMLConstants.FEATURE_SECURE_PROCESSING, false);
+            suppressException(() -> factory.setProperty(XMLConstants.FEATURE_SECURE_PROCESSING, false));
             // URL form of the JDK property; JDK 8's XMLSecurityManager.getIndex only matches this form, JDK 11+ accepts both.
-            tolerantSetProperty(factory, JDK_ENTITY_EXPANSION_LIMIT, "0");
-            tolerantSetProperty(factory, JDK_MAX_GENERAL_ENTITY_SIZE_LIMIT, "0");
+            suppressException(() -> factory.setProperty(JDK_ENTITY_EXPANSION_LIMIT, "0"));
             consumeStreamReader(factory, payload);
             //consumeEventReader(factory, payload);
         }, "StAX");
@@ -232,6 +229,7 @@ final class AttackTestSupport {
         assertParseSucceeds(() -> {
             final SchemaFactory factory = SchemaFactory.newInstance(XMLConstants.W3C_XML_SCHEMA_NS_URI);
             factory.setFeature(XMLConstants.FEATURE_SECURE_PROCESSING, false);
+            suppressException(() -> factory.setProperty(JDK_ENTITY_EXPANSION_LIMIT, "0"));
             factory.newSchema(streamSource(Payloads.BENIGN_SCHEMA)).newValidator().validate(streamSource(xml));
         }, "validator");
     }
@@ -287,8 +285,7 @@ final class AttackTestSupport {
         final SAXParserFactory parserFactory = SAXParserFactory.newInstance();
         parserFactory.setFeature(XMLConstants.FEATURE_SECURE_PROCESSING, false);
         final XMLReader reader = parserFactory.newSAXParser().getXMLReader();
-        tolerantSetReaderProperty(reader, JDK_ENTITY_EXPANSION_LIMIT, "0");
-        tolerantSetReaderProperty(reader, JDK_MAX_GENERAL_ENTITY_SIZE_LIMIT, "0");
+        suppressException(() -> reader.setProperty(JDK_ENTITY_EXPANSION_LIMIT, "0"));
         return new javax.xml.transform.sax.SAXSource(reader, new InputSource(new StringReader(xml)));
     }
 
@@ -308,19 +305,11 @@ final class AttackTestSupport {
         return new StreamSource(new StringReader(xml));
     }
 
-    private static void tolerantSetProperty(final XMLInputFactory factory, final String name, final Object value) {
+    private static void suppressException(ThrowingAction action) {
         try {
-            factory.setProperty(name, value);
-        } catch (final IllegalArgumentException ignored) {
-            // Property not recognised by this implementation.
-        }
-    }
-
-    private static void tolerantSetReaderProperty(final XMLReader reader, final String name, final Object value) {
-        try {
-            reader.setProperty(name, value);
-        } catch (final org.xml.sax.SAXException ignored) {
-            // Property not recognised by this implementation.
+            action.run();
+        } catch (final Exception e) {
+            // Ignore
         }
     }
 
