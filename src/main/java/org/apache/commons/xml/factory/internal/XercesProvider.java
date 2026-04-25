@@ -90,6 +90,7 @@ public final class XercesProvider extends AbstractXmlProvider {
         public Validator newValidator() {
             final Validator validator = delegate.newValidator();
             setFeature(validator, XMLConstants.FEATURE_SECURE_PROCESSING, true);
+            setProperty(validator, XERCES_SECURITY_MANAGER_PROPERTY, jdkLikeXercesSecurityManager());
             validator.setResourceResolver(resolver);
             return validator;
         }
@@ -98,6 +99,7 @@ public final class XercesProvider extends AbstractXmlProvider {
         public ValidatorHandler newValidatorHandler() {
             final ValidatorHandler handler = delegate.newValidatorHandler();
             setFeature(handler, XMLConstants.FEATURE_SECURE_PROCESSING, true);
+            setProperty(handler, XERCES_SECURITY_MANAGER_PROPERTY, jdkLikeXercesSecurityManager());
             handler.setResourceResolver(resolver);
             return handler;
         }
@@ -173,6 +175,49 @@ public final class XercesProvider extends AbstractXmlProvider {
     }
 
     private static final String FEATURE_DISALLOW_DOCTYPE = "http://apache.org/xml/features/disallow-doctype-decl";
+
+    /**
+     * Xerces-specific factory/validator property whose value is an {@code org.apache.xerces.util.SecurityManager} instance carrying processing-limit
+     * thresholds (entity-expansion limit, max occur limit, and so on).
+     */
+    private static final String XERCES_SECURITY_MANAGER_PROPERTY = "http://apache.org/xml/properties/security-manager";
+
+    /**
+     * Returns a fresh {@code SecurityManager} whose limits mirror what the JDK applies to its own parsers
+     *
+     * <p>Two limits are emulated, matching the only two values {@code org.apache.xerces.util.SecurityManager} exposes:</p>
+     *
+     * <ul>
+     *   <li>{@code setEntityExpansionLimit} from {@code jdk.xml.entityExpansionLimit}, default {@code 64000}.</li>
+     *   <li>{@code setMaxOccurNodeLimit} from {@code jdk.xml.maxOccurLimit}, default {@code 5000}.</li>
+     * </ul>
+     */
+    private static Object jdkLikeXercesSecurityManager() {
+        try {
+            final Class<?> clazz = Class.forName("org.apache.xerces.util.SecurityManager");
+            final Object sm = clazz.getDeclaredConstructor().newInstance();
+            clazz.getMethod("setEntityExpansionLimit", int.class).invoke(sm, jdkLimit("jdk.xml.entityExpansionLimit", 64000));
+            clazz.getMethod("setMaxOccurNodeLimit", int.class).invoke(sm, jdkLimit("jdk.xml.maxOccurLimit", 5000));
+            return sm;
+        } catch (final ReflectiveOperationException e) {
+            throw new IllegalStateException("Cannot construct org.apache.xerces.util.SecurityManager", e);
+        }
+    }
+
+    /**
+     * Reads an integer JDK XML limit from the named system property, falling back to {@code defaultValue} if unset, blank, or unparsable.
+     */
+    private static int jdkLimit(final String systemPropertyName, final int defaultValue) {
+        final String raw = System.getProperty(systemPropertyName);
+        if (raw == null || raw.isEmpty()) {
+            return defaultValue;
+        }
+        try {
+            return Integer.parseInt(raw.trim());
+        } catch (final NumberFormatException e) {
+            return defaultValue;
+        }
+    }
 
     /**
      * Default constructor; invoked by {@link java.util.ServiceLoader} and the registry.
