@@ -333,6 +333,10 @@ final class AttackTestSupport {
     static void assertTemplatesBlocks(final Source xslt) {
         assertParseFails(() -> {
             final Templates templates = XmlFactories.newTransformerFactory().newTemplates(xslt);
+            // Xalan return `null` if the template fails
+            if (templates == null) {
+                throw new TransformerException("Transformer factory returned null");
+            }
             templates.newTransformer().transform(streamSource("<root/>"), new StreamResult(new StringWriter()));
         }, "Templates", TransformerException.class);
     }
@@ -361,7 +365,10 @@ final class AttackTestSupport {
         assertNoLeak(() -> {
             final StringWriter sink = new StringWriter();
             final Templates templates = XmlFactories.newTransformerFactory().newTemplates(xslt);
-            templates.newTransformer().transform(streamSource("<root/>"), new StreamResult(sink));
+            // Xalan return `null` if the template fails
+            if (templates != null) {
+                templates.newTransformer().transform(streamSource("<root/>"), new StreamResult(sink));
+            }
             return sink.toString();
         }, "Templates", TransformerException.class);
     }
