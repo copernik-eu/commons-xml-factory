@@ -63,8 +63,16 @@ stylesheet) is blocked, and DOCTYPE input is rejected wherever the underlying im
 
 ### Supported implementations
 
-Out of the box the library recognises the stock JDK JAXP implementations, Apache Xerces 2.x, Woodstox, and Saxon-HE. If
-a factory resolves to an implementation not covered by any bundled hardening recipe, every `XmlFactories` method throws
+The library recognises:
+
+- the stock JDK JAXP implementations,
+- Android,
+- Saxon-HE,
+- Apache Xalan,
+- Apache Xerces,
+- Woodstox.
+
+If a factory resolves to an implementation not covered by any bundled hardening recipe, every `XmlFactories` method throws
 `IllegalStateException` with a message naming the unsupported class. Adding support for a new JAXP implementation
 requires a code change to this library.
 
@@ -137,6 +145,23 @@ The hardening applies to documents parsed through the returned factory. Styleshe
 the implementation picks internally, and that parser may not be hardened (Saxon's TrAX is one such case, see Building
 below). Treat stylesheets and schemas as trusted input, or pre-parse them through a hardened `XmlFactories` parser and
 pass the result as a `DOMSource` or `SAXSource`.
+
+### Android compatibility
+
+The library is compiled to Java 8 bytecode and runs on any Android version that supports a Java 8 runtime (API 19 and
+above). Hardening applied to factories produced by `XmlFactories` is layered, and not every layer is available on every
+Android release:
+
+- **Apache Xalan based TrAX and XPath** (the platform default since Android 1.0) and **Apache Xerces** (when added by
+  the application) are hardened on every supported API level: the JDK-style entity-expansion limits and the deny-all
+  resolver apply unchanged.
+- **The platform's harmony-based DOM and SAX factories** rely on the system libexpat for the SAX path. Native
+  billion-laughs amplification protection lives in libexpat 2.4 (March 2022) and was picked up by AOSP for **Android 13
+  (API 33)**. On API 33 and above the SAX parser blocks billion-laughs payloads natively; on older Android releases this
+  specific defence could be unavailable and a hostile internal-entity payload can amplify without bound.
+
+If your minimum-supported Android level is below 33 and you parse SAX input that you do not control, sanitise that input
+upstream of `XmlFactories`, or pre-parse with the JDK Xerces factory if you have it on the classpath.
 
 ### Caching and thread-safety
 
