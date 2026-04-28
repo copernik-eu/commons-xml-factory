@@ -66,7 +66,7 @@ android {
 junitPlatform {
     filters {
         // Pass single tag expression
-        includeTags("dom | sax")
+        includeTags("dom | sax | schema")
     }
 }
 
@@ -92,9 +92,8 @@ dependencies {
         }
     }
 
-    // StAX API: javax.xml.stream is absent from android.jar. The library JAR's XMLInputFactory references and DenyAllResolver's
-    // XMLResolver-backed inner class need it on the runtime classpath, otherwise DenyAllResolver fails to clinit on Android.
-    androidTestImplementation("javax.xml.stream:stax-api:1.0-2")
+    // Apache Xerces: android.jar ships javax.xml.validation but no SchemaFactory implementation.
+    androidTestImplementation("xerces:xercesImpl:2.12.2")
 
     androidTestImplementation("org.junit.jupiter:junit-jupiter-api:5.10.2")
     androidTestImplementation("de.mannodermaus.junit5:android-test-core:1.4.0")

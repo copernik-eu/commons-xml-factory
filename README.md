@@ -149,19 +149,24 @@ pass the result as a `DOMSource` or `SAXSource`.
 ### Android compatibility
 
 The library is compiled to Java 8 bytecode and runs on any Android version that supports a Java 8 runtime (API 19 and
-above). Hardening applied to factories produced by `XmlFactories` is layered, and not every layer is available on every
-Android release:
+above). What ships with the platform and what the application has to add varies by JAXP API:
 
-- **Apache Xalan based TrAX and XPath** (the platform default since Android 1.0) and **Apache Xerces** (when added by
-  the application) are hardened on every supported API level: the JDK-style entity-expansion limits and the deny-all
-  resolver apply unchanged.
-- **The platform's harmony-based DOM and SAX factories** rely on the system libexpat for the SAX path. Native
-  billion-laughs amplification protection lives in libexpat 2.4 (March 2022) and was picked up by AOSP for **Android 13
-  (API 33)**. On API 33 and above the SAX parser blocks billion-laughs payloads natively; on older Android releases this
-  specific defence could be unavailable and a hostile internal-entity payload can amplify without bound.
+- **DOM** (`DocumentBuilderFactory`) and **SAX** (`SAXParserFactory`) ship in `android.jar` since API 1. DOM is backed by
+  KXmlParser (a kxml2 pull parser); SAX is a wrapper around the system `libexpat`. The hardened factories returned by
+  `XmlFactories` route through these built-in implementations.
+- **TrAX** (`TransformerFactory`) and **XPath** (`XPathFactory`) ship as Apache Xalan since Android 1.0. The hardened
+  factories receive the same JDK-style entity-expansion limits and deny-all resolver that the standalone Xalan recipe
+  applies.
+- **W3C XML Schema** (`SchemaFactory`) is **declared** in `android.jar` (the `javax.xml.validation.*` API is present)
+  but the platform ships **no implementation**.
+- **StAX** (`XMLInputFactory`) is **not** part of `android.jar` at any API level.
 
-If your minimum-supported Android level is below 33 and you parse SAX input that you do not control, sanitise that input
-upstream of `XmlFactories`, or pre-parse with the JDK Xerces factory if you have it on the classpath.
+The SAX path's native billion-laughs amplification protection lives in `libexpat` 2.4 (March 2022), which AOSP first
+shipped in **Android 13 (API 33)**. On API 33 and above the platform SAX parser blocks billion-laughs payloads natively;
+on older Android releases this specific defence could be unavailable, and a hostile internal-entity payload could
+amplify without bound. If your minimum-supported Android level is below 33 and you parse SAX input that you do not
+control, sanitise upstream of `XmlFactories`, or pre-parse with Apache Xerces (which carries its own entity-expansion
+limit) once you have added it to the classpath for schema support.
 
 ### Caching and thread-safety
 
