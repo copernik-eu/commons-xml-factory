@@ -66,7 +66,7 @@ android {
 junitPlatform {
     filters {
         // Pass single tag expression
-        includeTags("dom | sax | schema")
+        includeTags("dom | sax | schema | trax")
     }
 }
 
