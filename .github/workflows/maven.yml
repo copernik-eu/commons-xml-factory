@@ -82,7 +82,9 @@ jobs:
       - name: Set up Maven cache
         uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae  #v5.0.5
         with:
-          path: ~/.m2/repository
+          path: |
+            ~/.m2/repository
+            ~/.gradle/wrapper
           key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
           restore-keys: |
             ${{ runner.os }}-maven-
@@ -130,10 +132,13 @@ jobs:
           distribution: temurin
           java-version: 17
 
+      # We only restore, since the JDK build's cache will be more comprehensive
       - name: Set up Maven cache
-        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
-          path: ~/.m2/repository
+          path: |
+            ~/.m2/repository
+            ~/.gradle/wrapper
           key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
           restore-keys: |
             ${{ runner.os }}-maven-
