@@ -47,7 +47,7 @@ import org.junit.jupiter.api.Test;
  * <ul>
  *   <li>{@code hardenedSaxBlocks}, {@code hardenedXmlReaderBlocks}: large fixture on Android (libexpat is the only defence), medium fixture on JDK
  *       (entity-expansion count limit is sufficient). Selected by {@link AttackTestSupport#IS_ANDROID}.</li>
- *   <li>{@code hardenedDomBlocks} and {@code unconfiguredDomResolves}: gated on {@link AttackTestSupport#DOM_RESOLVES_INTERNAL_ENTITIES}. They run with the
+ *   <li>{@code hardenedDomBlocks} and {@code unconfiguredDomParses}: gated on {@link AttackTestSupport#DOM_RESOLVES_INTERNAL_ENTITIES}. They run with the
  *       medium fixture on platforms whose DOM parser resolves user-defined entities (every JDK), and skip on platforms where it does not (Android with
  *       KXmlParser, where custom internal entities become unresolved {@code EntityReference} nodes and amplification cannot grow). When the probe lights up
  *       on a future Android the assertions will start running again without further changes.</li>
@@ -119,6 +119,15 @@ class BillionLaughsTest {
                 + body + "\n";
     }
 
+    /**
+     * Hardened-side XSD payload: large on Android (libexpat amplification check), medium on JDK (entity-expansion count limit).
+     */
+    private static String hardenedXsdPayload() {
+        return AttackTestSupport.IS_ANDROID
+                ? withDoctype("xs:schema", LARGE_DTD, AttackTestSupport.xsdBody(LARGE_CONTENT))
+                : xsdPayload();
+    }
+
     private static String xsdPayload() {
         return withDoctype("xs:schema", MEDIUM_DTD, AttackTestSupport.xsdBody(MEDIUM_CONTENT));
     }
@@ -144,7 +153,7 @@ class BillionLaughsTest {
     @Test
     @Tag("schema")
     void hardenedSchemaBlocks() {
-        AttackTestSupport.assertSchemaBlocks(AttackTestSupport.streamSource(xsdPayload()));
+        AttackTestSupport.assertSchemaBlocks(AttackTestSupport.streamSource(hardenedXsdPayload()));
     }
 
     @Test
@@ -156,19 +165,19 @@ class BillionLaughsTest {
     @Test
     @Tag("trax")
     void hardenedTemplatesDoesNotLeak() {
-        AttackTestSupport.assertTemplatesDoesNotLeak(AttackTestSupport.streamSource(xsltPayload()));
+        AttackTestSupport.assertTemplatesBlocksOrDoesNotLeak(AttackTestSupport.streamSource(xsltPayload()));
     }
 
     @Test
     @Tag("trax")
     void hardenedTransformerDoesNotLeak() {
-        AttackTestSupport.assertTransformerDoesNotLeak(mediumXmlPayload());
+        AttackTestSupport.assertTransformerBlocksOrDoesNotLeak(mediumXmlPayload());
     }
 
     @Test
     @Tag("schema")
     void hardenedValidatorBlocks() {
-        AttackTestSupport.assertValidatorBlocks(mediumXmlPayload());
+        AttackTestSupport.assertValidatorBlocks(hardenedXmlPayload());
     }
 
     @Test
@@ -179,45 +188,45 @@ class BillionLaughsTest {
 
     @Test
     @Tag("dom")
-    void unconfiguredDomResolves() {
+    void unconfiguredDomParses() {
         Assumptions.assumeTrue(AttackTestSupport.DOM_RESOLVES_INTERNAL_ENTITIES,
                 "Skipped: platform DOM does not resolve user-defined entities");
-        AttackTestSupport.assertDomResolves(mediumXmlPayload());
+        AttackTestSupport.assertPermissiveDomParses(mediumXmlPayload());
     }
 
     @Test
     @Tag("sax")
-    void unconfiguredSaxResolves() {
-        AttackTestSupport.assertSaxResolves(mediumXmlPayload());
+    void unconfiguredSaxParses() {
+        AttackTestSupport.assertPermissiveSaxParses(mediumXmlPayload());
     }
 
     @Test
     @Tag("schema")
     void unconfiguredSchemaCompiles() {
-        AttackTestSupport.assertSchemaCompiles(AttackTestSupport.streamSource(xsdPayload()));
+        AttackTestSupport.assertPermissiveSchemaCompiles(AttackTestSupport.streamSource(xsdPayload()));
     }
 
     @Test
     @Tag("stax")
-    void unconfiguredStaxResolves() {
-        AttackTestSupport.assertStaxResolves(mediumXmlPayload());
+    void unconfiguredStaxParses() {
+        AttackTestSupport.assertPermissiveStaxParses(mediumXmlPayload());
     }
 
     @Test
     @Tag("trax")
     void unconfiguredTemplatesCompiles() {
-        AttackTestSupport.assertTemplatesCompiles(xsltPayload());
+        AttackTestSupport.assertPermissiveTemplatesCompiles(xsltPayload());
     }
 
     @Test
     @Tag("trax")
-    void unconfiguredTransformerSucceeds() {
-        AttackTestSupport.assertTransformerSucceeds(mediumXmlPayload());
+    void unconfiguredTransformerTransforms() {
+        AttackTestSupport.assertPermissiveTransformerTransforms(mediumXmlPayload());
     }
 
     @Test
     @Tag("schema")
-    void unconfiguredValidatorAccepts() {
-        AttackTestSupport.assertValidatorAccepts(mediumXmlPayload());
+    void unconfiguredValidatorValidates() {
+        AttackTestSupport.assertPermissiveValidatorValidates(mediumXmlPayload());
     }
 }
