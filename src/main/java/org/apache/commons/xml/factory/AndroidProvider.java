@@ -146,7 +146,7 @@ final class AndroidProvider {
      * {@code namespace-prefixes} on triggers the throw at parse time. This wrapper relocates the throw to the offending {@code setFeature} call, where
      * Apache Xalan's {@code try { ... } catch (SAXException) { /* We don't care. *<!-- -->/ }} swallows it cleanly.</p>
      */
-    private static final class GuardedXMLReader extends DelegatingXMLReader {
+    static final class GuardedXMLReader extends DelegatingXMLReader {
 
         GuardedXMLReader(final XMLReader delegate) {
             super(delegate);
