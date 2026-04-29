@@ -661,7 +661,11 @@ final class AttackTestSupport {
      * Builds a {@link SAXSource} wrapping the payload, without an explicit parser; used by the unconfigured-side TrAX controls.
      */
     private static SAXSource permissiveSaxSource(final String xml) {
-        return new SAXSource(new InputSource(new StringReader(xml)));
+        final SAXParserFactory factory = SAXParserFactory.newInstance();
+        factory.setNamespaceAware(true);
+        final XMLReader reader = strictXMLReader(factory);
+        suppressException(() -> reader.setProperty(JDK_ENTITY_EXPANSION_LIMIT, "0"));
+        return new SAXSource(reader, new InputSource(new StringReader(xml)));
     }
 
     private static boolean probeAndroid() {
@@ -772,8 +776,12 @@ final class AttackTestSupport {
     /**
      * Builds an {@link XMLReader} from {@code factory} with {@link #STRICT_REPORTER} installed as its error handler.
      */
-    private static XMLReader strictXMLReader(final SAXParserFactory factory) throws ParserConfigurationException, SAXException {
-        return strictXMLReader(factory.newSAXParser().getXMLReader());
+    private static XMLReader strictXMLReader(final SAXParserFactory factory) {
+        try {
+            return strictXMLReader(factory.newSAXParser().getXMLReader());
+        } catch (ParserConfigurationException | SAXException e) {
+            throw new AssertionError("Failed to create permissive XMLReader", e);
+        }
     }
 
     /**
