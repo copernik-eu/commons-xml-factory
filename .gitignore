@@ -1,5 +1,7 @@
 # Build output
 target
+# flatten-maven-plugin output
+.flattened-pom.xml
 # Eclipse files
 .project
 .classpath
